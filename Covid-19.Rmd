@@ -1,0 +1,206 @@
+---
+title: "Casos de Covid-19 en Costa Rica"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation:  rows
+    
+    
+  
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(sf)
+library(dplyr)
+library(leaflet)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+
+
+#$#Datos Covid
+
+cr_cantones_covid19 <- st_read("https://raw.githubusercontent.com/geoprocesamiento-2020i/datos/master/covid19/casos/cr/cr-covid19-cantones.geojson")
+
+# Ordenamiento de CR_Cvd19
+
+#provincia
+
+CRP_Cvd19<-cr_cantones_covid19%>%
+  group_by(provincia)%>%
+  summarise(Confirmados =sum(confirmados,na.rm = TRUE),Activos = sum(activos,na.rm = TRUE), 
+          Recuperados= sum(recuperados, na.rm= TRUE ), Fallecidos = sum(muertes, na.rm = TRUE))
+
+#$#canton
+
+CRC_Cvd19<-cr_cantones_covid19%>%
+  group_by(canton)%>%
+  summarise(Confirmados =sum(confirmados,na.rm = TRUE),Activos = sum(activos,na.rm = TRUE), 
+            Recuperados= sum(recuperados, na.rm= TRUE ), Fallecidos = sum(muertes, na.rm = TRUE))
+
+#$#Graficos 
+
+# Ordenar de mayor a menor
+CRGG_cvd19.ordenado <- order(CRP_Cvd19$Confirmados, decreasing=TRUE)
+
+# Nuevo data frame ordenado
+CRGG_cvd19.confirmados <- CRP_Cvd19[CRGG_cvd19.ordenado,]
+
+#$# Grafico de Barras
+
+
+#$#Tabla
+
+CRC_Cvd19.ordenado <- order(CRC_Cvd19$Confirmados, decreasing=TRUE)
+
+# Nuevo data frame ordenado
+CRCT_cvd19.ordenado <- CRC_Cvd19[CRC_Cvd19.ordenado,]
+
+
+#$# ValueBox
+
+
+
+```
+
+
+Distribución provincial del Covid-19 en Costa Rica
+=======================================================================
+
+
+Column {.sidebar data-width=500}
+-----------------------------------------------------------------------
+
+
+```{r}
+
+###Distribución provincial del Covid-19 en Costa Rica
+
+pal <- colorNumeric("viridis",NULL)
+
+leaflet(CRP_Cvd19) %>% 
+  addTiles() %>%
+  addPolygons( ,
+  fillColor = ~pal(log10(Confirmados)),
+  weight = 2,
+  opacity = 0.7,
+  dashArray = "4",
+  fillOpacity = 0.7,
+  highlight = highlightOptions(
+    weight = 5,
+    color = "#666",
+    dashArray = "",
+    fillOpacity = 0.7,
+    bringToFront = TRUE),
+    popup = paste( CRP_Cvd19$provincia,'<br/>', "Confirmados:",CRP_Cvd19$Confirmados,'<br/>',
+    "Recuperados", CRP_Cvd19$Recuperados,'<br/>', "Fallecidos",  CRP_Cvd19$Fallecidos,'<br/>',
+    "Activos", CRP_Cvd19$Activos, sep = '<br/>'))%>%
+   addLegend(pal = pal, values = ~Confirmados,  opacity = 0.7, title = NULL,
+    position = "bottomright")
+
+
+
+
+```
+
+Row {data-height=350}
+-----------------------------------------------------------------------
+Total de casos de confirmados de  Covid-19
+
+```{r}
+
+
+```
+
+
+
+
+Total de casos de confirmados de  Covid-19
+
+```{r}
+
+valueBox(length( cr_cantones_covid19%>% 
+summarize(sum(confirmados, na.rm = TRUE), cantidad_canton = n() )), icon = "fa-pencil")
+  
+
+```
+
+
+
+
+
+Row {data-height=500}
+-----------------------------------------------------------------------
+
+
+```{r}
+
+ggplot(CRGG_cvd19.confirmados, aes(x=reorder(provincia, -Confirmados), y=Confirmados)) +
+  ggtitle("Casos confirmados de Covid-19 en Costa Rica ") +
+  xlab("Provincias") + 
+  ylab("Casos confirmados") +  
+  geom_col() +
+  geom_text(aes(label=Confirmados), vjust=-0.3, size=3.5)
+
+```
+
+
+
+Distribución cantonal del Covid-19 en Costa Rica
+=======================================================================
+
+column {.sidebar data-width=500}
+-----------------------------------------------------------------------
+
+```{r}
+###Distribución cantonal del Covid-19 en Costa Rica
+
+bins <- c(0,5,10,20,40,50,70,100,150, Inf)
+pal <- colorBin("YlOrRd", domain = CRC_Cvd19$Confirmados, bins = bins)
+
+leaflet(CRC_Cvd19) %>% 
+  addTiles() %>%
+  addPolygons( ,
+  fillColor = ~pal(Confirmados),
+  weight = 2,
+  opacity = 1,
+  dashArray = "3",
+  fillOpacity = 1,
+  highlight = highlightOptions(
+    weight = 5,
+    color = "#666",
+    dashArray = "",
+    fillOpacity = 1,
+    bringToFront = TRUE),
+    popup = paste( CRC_Cvd19$canton,'<br/>', "Confirmados:",CRC_Cvd19$Confirmados,'<br/>',
+    "Recuperados", CRC_Cvd19$Recuperados,'<br/>', "Fallecidos",  CRC_Cvd19$Fallecidos,'<br/>',
+    "Activos", CRC_Cvd19$Activos, sep = '<br/>'))%>%
+   addLegend(pal = pal, values = ~Confirmados,  opacity = 0.7, title = NULL,
+    position = "bottomright")
+
+```
+
+
+Row {data-height=350}
+-----------------------------------------------------------------------
+
+Row {data-height=400}
+-----------------------------------------------------------------------
+
+Casos de Covid-19 en cantones de Costa Rica
+
+```{r}
+
+ 
+  kable(
+  CRCT_cvd19.ordenado[, c("canton","Confirmados","Recuperados","Fallecidos"), drop = TRUE],
+  col.names= c("Canton","Confirmados","Recuperados","Fallecidos"))%>%
+kable_styling() %>%
+scroll_box(
+  width = "600px", 
+  height = "400px", 
+  fixed_thead = TRUE
+)
+
+
+```
